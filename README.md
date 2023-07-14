@@ -17,20 +17,34 @@
 如果直接对齐Audition，直接上代码，可以自行对比，若有错误此处不做阐述，请自行校验和修改
 ```python
 from scipy import signal,fft
-
-def spectrum(data,fft_size,rate=48000,overlap=0.5)
+import numpy as np
+def spectrum(data,fftSize,rate=48000,overlap=0.5):
     '''
     与audition对应频率分析图表
     ：param data：数据段
-    ：param fft_size：分析fft大小，一般为512/1024/2048/4096/...等
+    ：param fftSize：分析fft大小，一般为512/1024/2048/4096/...等
     ：param rate：采样率，用于横坐标对齐
     ：param overlap：重叠率,一般为50%，可以自行选择
     '''
     dataSplit=[]
-    window=signal.windows.hanning(fft_size)
+    window=signal.windows.hanning(fftSize)
+    splitLinespace=range(0,len(data),int(fftSize*overlap))  #会漏掉最后一部分数据，但是不多，问题不大
+    for i in splitLinespace:                                #
+        if(i+fftSize)>len(data):
+            break
+        dataSplit.append(data[i:i+fftSize])
+    fftSum=np.zeros(fftSize//2)
+    for i in dataSplit:                                     #分区
+        i=i*window                                          #加窗
+        fftData=abs(fft.fft(i))                             #fft
+        fftSum+=np.array(fftData[:fftSize//2])              #求和
+    fftAvg=fftSum/len(dataSplit)                            #平均
     
+    fftSpectrum=20*np.log10(abs(fftAvg)/(fftSize//4))       #幅度换算与校准
+    fftFreq=np.linspace(0,rate//2,fftSize//2,endpoint=False)#横坐标计算
+    return fftFreq,fftSpectrum                              #返回横坐标和纵坐标
 ```
 
-
+### 
 
  
