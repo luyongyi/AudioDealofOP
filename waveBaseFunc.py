@@ -1,6 +1,8 @@
 
 from scipy import signal,fft
 import numpy as np
+def Log(A):
+    print(A)
 def spectrum(data,fftSize,rate=48000,overlap=0.5):
     '''
     与audition对应频率分析图表
@@ -26,4 +28,23 @@ def spectrum(data,fftSize,rate=48000,overlap=0.5):
     fftSpectrum=20*np.log10(abs(fftAvg)/(fftSize//4))       #幅度换算与校准
     fftFreq=np.linspace(0,rate//2,fftSize//2,endpoint=False)#横坐标计算
     return fftFreq,fftSpectrum
+
+def delay(data,trigger):
+    '''
+    定位data内，trigger波形的位置
+    ：param data：数据段
+    ：param trigger：trigger波形
+    '''
+    if(len(trigger)>=len(data)):
+        return False
+    matching=[]
+    for i in range(len(data)-len(trigger)):
+        matching.append(np.dot(data[i:i+len(trigger)],trigger))
+    
+    location=matching.index(max(matching))
+
+    if(type(location)==type([])):
+        Log("multi Trigger Location")
+        return location[0]
+    return location
 
