@@ -1,5 +1,5 @@
 # AudioDealofOP
-除常规业务项目外，其余技术方面比较深入的工作内容精炼总结，主要是自动化、硬件场景搭建、音频杂音识别相关内容
+除常规业务项目外，其余技术方面比较深入的工作内容精炼总结，主要是自动化、硬件场景搭建、音频杂音识别相关内容。有必要提醒一下，由于html和Github支持的Latex语法问题，所以不单独修改语法，需要查阅请自行clone到本地
 
 # 基础
 ## 标准化
@@ -80,12 +80,54 @@ def spectrum(data,fftSize,rate=48000,overlap=0.5):
 如上述，部分场景设备录制需要先于手机，部分场景手机录制先于设备播放，此场景有至少2s差异，如果遇到uiautomator断连情况，可能延长到20s甚至50s，因此需要做时间差校准
 
 ### 自相关函数（时域）（精度最高，误差25/48000 s内）
-在测试音源中嵌入trigger音源，后使用trigger音源逐采样点计算自相关值，最大即为triigger位置，可以使用二次校验排除误差情况
+在测试音源中嵌入trigger音源，后使用trigger音源逐采样点计算自相关值，最大即为trigger位置，可以使用二次校验排除误差情况
 trigger定制需要巧妙，时间要在降噪算法生效前尽可能长，尽可能寻找不被手机算法捕捉直接播放的特制音源
-算法可见wavBaseFunc.delay函数
-可以使用cuda优化长音源计算时间，
+算法可见wavBaseFunc.delay函数  
+
+```python  
+from nump
+def delay(data,trigger):
+    '''
+    定位data内，trigger波形的位置
+    ：param data：数据段
+    ：param trigger：trigger波形
+    '''
+    if(len(trigger)>=len(data)):
+        return False
+    matching=[]
+    for i in range(len(data)-len(trigger)):
+        matching.append(np.dot(data[i:i+len(trigger)],trigger))
+    
+    location=matching.index(max(matching))
+
+    if(type(location)==type([])):
+        Log("multi Trigger Location")
+        return location[0] 
+    return location
+```
+可以使用cuda优化长音源计算时间    
+```python
+import cuda
+@cuda.jit
+def delay(data,trigger,result):
+    id=cuda.threadIdx.x+cuda.BlockIdx*cuda.blockDim.x
+    gS=cuda.gridDim.x*cuda.blockDim.x
+    for i in range(id,len(data)-len(tri),gS):
+        temp=0
+        for j in range(len(tri)):
+            temp+=data[i+j]*tri[j]
+        result[i]=temp          #或者不用cuda，使用signal.correlate也可以有这样的效果，运算速度也比python自身硬算快
+```
+由于你使用自相关，互相关函数一般是直接取最大值，所以对应的trigger音源应该有以下注意事项：  
+1.trigger的整体RMS值应该尽可能大    
+2.trigger整体时长应该在1s左右，尽可能小  
+3.trigger的波形特征不能为单频音量，波形特征应该明显    
+
+
+
 ### 频谱阈值（频域）（精度较差）
-就是使用某单频或复频音做校准，但是时间误差稍大，1024的FFT SIZE根据自身场景定制阈值即可，阈值小可能误判，阈值大了误差会增大 
+就是使用某单频或复频音做校准，但是时间误差稍大，1024的FFT SIZE根据自身场景定制阈值即可，阈值小可能误判，阈值大了误差会增大   
+整体思路就是判定好某个阈值，单个频点或者多个频点符合阈值筛选范围的，再对这个时间范围和对应频点幅度做峰值检测，就能够识别出最匹配时间，但是前提是FFT SIZE要跟音源波形时间有一定对应关系，或者在峰值检测处，对峰值相等的波峰做居中选择，在此不做赘述，可以自行做实验。
 
 
 
