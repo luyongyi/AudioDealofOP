@@ -179,6 +179,18 @@ for i in np.linspace(frequency,frequency*times,times,dtype="int"):
 简单分析，FFT后对峰值频率做统计即可，峰值稳定持续不变的就是电流声  
 准确分析，FFT后计算前后帧互相关性，互相关性满足一定程度，互相关性高的帧满足一定数量就是此电流杂音
 
+```python
+import 必要的库
+data=sf.read("音.wav")
+dataSplit=分帧(dataLeft)
+
+dataSplitFFT=fft(dataSplit)
+for 计算帧FFT前后相关性
+    频域上，每帧与其前后N帧计算互相关性
+互相关高到阈值上的帧率提取
+return 覆盖性电流音时间
+```
+
 ### 左右耳同步
 测试方法（普通音频）：  
 可以使用实际音频进行校验，在左声道使用分帧后，对右声道200ms内先进行响度归一化操作，再进行互校验，就能计算出整体的延迟情况和延迟偏差  
