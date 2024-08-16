@@ -185,6 +185,32 @@ def delay(data,trigger,result):
             temp+=data[i+j]*tri[j]
         result[i]=temp          #或者不用cuda，使用signal.correlate也可以有这样的效果，运算速度也比python自身硬算快，而且auto模式会有特别运算方式，能让速度优化到极快，具体原理是转化到fft域计算
 ```
+
+```python
+#这里是使用pytorch加速计算的demo
+import torchaudio
+from matplotlib import pyplot
+import torch
+import torch.nn.functional as F
+import time
+start_time = time.time()  # 获取当前时间戳
+# 执行待计时的代码块
+print(torchaudio.__version__)
+devices=torch.device("mps")#因为使用是mac，所以这里用的是mps，若为nvdia显卡，则为cuda
+cpuDevice=torch.device("cpu")
+# info=torchaudio.info("/Users/luyongyi/yongyi的文档/OPPO工作经验/AudioDealofOP/torch4audio/test1.mp3")
+# print(info)
+data,rate=torchaudio.load("/Users/luyongyi/yongyi的文档/OPPO工作经验/AudioDealofOP/testAudio/nvwa/移动5G通话免提4格音量.wav")
+tri,triRate=torchaudio.load("/Users/luyongyi/yongyi的文档/OPPO工作经验/AudioDealofOP/testAudio/nvwa/依赖/trigger.wav")
+triDeives=tri[0].view(1,1,-1).to(devices)
+dataDeives=data[0].view(1,1,-1).to(devices)
+output = F.conv1d(dataDeives, triDeives ,padding="valid",stride=1)
+print(output.device)
+print("Triiger所在采样点为：",torch.argmax(output))
+end_time = time.time()  # 获取当前时间戳
+elapsed_time = end_time - start_time  # 计算时间差
+print("代码执行时间为：{:.6f}秒".format(elapsed_time))
+```
 由于你使用自相关，互相关函数一般是直接取最大值，所以对应的trigger音源应该有以下注意事项：  
 1.trigger的整体RMS值应该尽可能大    
 2.trigger整体时长应该在1s左右，尽可能小  
@@ -250,6 +276,8 @@ for i in np.linspace(frequency,frequency*times,times,dtype="int"):
     
     - 如图一所示，此覆盖性杂音包含基音周期长和包络平直两个特征，非常符合用来做案例讲解
         - 若人声/器乐是此平直特征，那么一个平直的包络范围内肯定包含很多基音周期
+
+
 <div align="center">
 <figure>
     <img src="photo/正常说话和覆盖性电流音比对.png" alt="图片描述" />
@@ -285,8 +313,143 @@ for k,v in enumerate(dataLeftSplit):            #遍历每帧
 1/2都可以使用互相关计算相关性直接做出处理，原因是：    
 1.**补包**：分为填0和补帧，填0使用简单0点识别即可，就是一帧内有持续0的包，但实际上要注意静音段的关系，静音时信道噪声最长时间一般有3s是持续为0的，需要排除静音段下的误识别。补帧解决直接使用互相关即可，按照前后两次播放对应关系，相关系数少于一定程度，然后继续分帧和前帧率做比较，若后续分帧和前帧相关系数高，则判断为补包。但要因为有基因周期关系，所以在某些程度上，在一个基因周期内，前后帧自相关关系很高，互相关法能把问题抓出，但是容易高频误判为补帧  
 2.**延迟波动**：即使使用了播放缓存，现在通话环境和电话线路直接占用固定时间帧（时分复用）不一样，手机到基站距离会有干扰，有干扰就有重传并且手机在实际场景会移动，VOIP通话同理。再者手机/耳机/软件厂商会有针对此情况的应对，部分策略也会导致播放延迟。    
-前后两次播放，抽象成左右声道计算对应的同步时间，就能知道整段通话是有多少延迟抖动。临界点会有抖动，自行消抖即可，可以使用低通滤波器。
+前后两次播放，抽象成左右声道计算对应的同步时间，就能知道整段通话是有多少延迟波动。临界点会有抖动，自行消抖即可，可以使用低通滤波器。  
+下面详细解释整个流程
 
+<div align="center">
+<figure>
+    <img src="photo/trigger定位展示.png" alt="图片描述" />
+    <figcaption>图1:定位方法展示</figcaption>
+</figure>
+</div>  
+trigger定位出来后，后续音频位置肯定是已知的，因为设置的音频是两次相同的播放，所以通过对比可以知道此时的动态延迟  
+<div align="center">
+<figure>
+    <img src="photo/音频前后两次相同播放说明.png" alt="图片描述" />
+    <figcaption>图2:前后两次播放</figcaption>
+</figure>
+</div>  
+可以前后两音频转换成双通道左右声道音频，这样视觉对比情况会相对明显  
+
+<div align="center">
+<figure>
+    <img src="photo/左右声道差异大部分.png" alt="图片描述" />
+    <figcaption>图3:前后延迟差异大部分</figcaption>
+</figure>
+</div>  
+   
+     
+
+<div align="center">
+<figure>
+    <img src="photo/左右声道差异小部分.png" alt="图片描述" />
+    <figcaption>图4:前后延迟差异小部分</figcaption>
+</figure>
+</div>  
+
+由上述两图可以看出,通话部分在不同时间通讯延迟会有区别，从而导致音频播放有延迟，如果业务需要抓取出通话延迟动态变化状况，可以使用分段互相关方式确认延迟情况  
+<div align="center">
+<figure>
+    <img src="photo/延迟波动情况.png" alt="图片描述" />
+    <figcaption>图5:延迟波动情况</figcaption>
+</figure>
+</div>     
+红线为无延迟标准线，纵坐标为偏移量，单位是采样点。横坐标是时间。
+  
+整体处理代码如下，使用类C流程代码，易懂，请根据自身业务代码适配  
+
+```python
+import torchaudio
+from matplotlib import pyplot as plt
+import torch
+import torch.nn.functional as F
+import time
+
+
+#读取音源
+
+data,rate=torchaudio.load("torch4audio/移动5G通话免提9格音量_L.wav")
+tri,triRate=torchaudio.load("torch4audio/trigger.wav")
+refData,refRate=torchaudio.load("torch4audio/裁切整体通话音源ref.wav")
+TRITIME=int(2.68*rate)
+#此处定位Trigger位置
+
+start_time = time.time()  # 获取当前时间戳
+# 执行待计时的代码块
+print(torchaudio.__version__)
+
+#数据下沉到device，我这是mps
+devices=torch.device("mps")
+cpuDevice=torch.device("cpu")
+# info=torchaudio.info("/Users/luyongyi/yongyi的文档/OPPO工作经验/AudioDealofOP/torch4audio/test1.mp3")
+# print(info)
+triDeives=tri[0].view(1,1,-1).to(devices)
+dataDeives=data[0].view(1,1,-1).to(devices)
+output = F.conv1d(dataDeives, triDeives ,padding="valid",stride=1)
+triLocation=torch.argmax(output).item() #执行到此处会卡住，若不涉及读取，程序可以和gpu运算并行
+print(output.device)
+print("定位位置：",triLocation)
+end_time = time.time()  # 获取当前时间戳
+elapsed_time = end_time - start_time  # 计算时间差
+print("trigger定位代码执行时间为：{:.6f}秒".format(elapsed_time))
+#print(data[:,0:1])
+#这里进行音频的裁切
+print(len(refData[0]))
+realDataPre=data[:,triLocation+TRITIME:triLocation+TRITIME+len(refData[0])//2]
+realDataAft=data[:,triLocation+TRITIME+len(refData[0])//2:triLocation+TRITIME+len(refData[0])]
+print("pre",realDataPre)
+print("aft",realDataAft)
+#print(len(realData))
+#
+# result = torch.cat((realDataPre, realDataAft), dim=0)#前后两声道合成为双声道文件便于保存观测整体偏移量以便核对
+# print(result)
+
+#torchaudio.save("torch4audio/cutsample.wav",result,refRate,format="wav")
+start_time = time.time()  # 获取当前时间戳
+#for循环进行conv1d计算，计算延迟
+TIMECALCULATE=50        #前后计算多少ms，要有一个范围
+GAP=int(TIMECALCULATE/1000*rate)   #前后计算量,计算多少个采样点
+FFTSIZE_GAP=4800
+setp=100            #计算间隔，类似stride，用于减少显存压力
+ans=[]
+print(len(realDataPre[0]))
+for i in range(GAP,len(realDataPre[0])-GAP,setp):
+    preData=realDataPre[:,i-GAP:i+FFTSIZE_GAP+GAP][0].view(1,1,-1).to(devices)
+    refDatas=realDataAft[:,i:i+FFTSIZE_GAP][0].view(1,1,-1).to(devices)
+    ans.append(F.conv1d(preData, refDatas ,padding="valid",stride=1))
+print("计算任务已完全下发")
+ansLocation=[]
+for i in ans:
+    ansLocation.append(torch.argmax(i).item())
+
+print(ansLocation)
+#根据对比值寻找偏移量，此处应该跟对比帧RMS值挂钩
+import json
+with open('data.json', 'w') as f:
+    json.dump(ansLocation,f)
+end_time = time.time()  # 获取当前时间戳
+elapsed_time = end_time - start_time  # 计算时间差
+print("核心延迟定位代码执行时间为：{:.6f}秒".format(elapsed_time))
+# plt.plot(ansLocation)
+# plt.show()
+
+from scipy import signal
+
+import numpy as np
+from scipy.signal import savgol_filter
+# 示例信号
+# 应用移动平均平滑
+b,a=signal.butter(4,0.005 ,"low")
+filtansLocation=signal.filtfilt(b,a,ansLocation)
+#自行匹配好横纵坐标,这里就不说明了
+plt.plot(ansLocation)#平滑前的波形
+y_smoothed = savgol_filter(filtansLocation, window_length=3500, polyorder=2)
+plt.plot(y_smoothed)#平滑后的波形
+plt.show()
+
+#plot图形，输出plot图 
+
+```
 
 ### 响度
 同外放处理，通话响度可以参考K计权，使用A计权也可以
