@@ -2,11 +2,11 @@
 除常规业务项目外，其余技术方面比较深入的工作内容精炼总结，主要是自动化、硬件场景搭建、音频杂音识别相关内容。有必要提醒一下，由于html和Github支持的Latex语法问题，所以不单独修改语法，需要查阅请自行clone到本地  
 有疑问请提issue  
 - [x]基础知识
-- [ ]硬件框架  
-- [ ]整体拓扑
+- [x]硬件框架  
+- [x]整体拓扑
 - [ ]软件框架
 - [ ]算法逻辑
-- [ ]算法关键代码
+- [x]算法关键代码
 
 文档分块
 - [音频测试卷积神经网络应用](CNN4AudioTesting.md)
@@ -283,7 +283,11 @@ for i in np.linspace(frequency,frequency*times,times,dtype="int"):
     <img src="photo/正常说话和覆盖性电流音比对.png" alt="图片描述" />
     <figcaption>图1:正常说话和覆盖性电流音比对</figcaption>
 </figure>
-</div>
+</div>  
+
+```python 
+代码略
+```
 
 ### 左右耳同步
 测试方法（普通音频）：  
