@@ -11,7 +11,8 @@
 文档分块
 - [音频测试卷积神经网络应用](CNN4AudioTesting.md)
 - [音频测试场景硬件搭建](HARDWARE4AudioTesting.md)
-
+- [前端软件设计逻辑](F_SofewareDesign.md)
+- [后端计算软件设计逻辑](B_SofewareDesign.md)
 # 基础
 ## 标准化
 
