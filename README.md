@@ -13,7 +13,8 @@
 - [音频测试卷积神经网络应用](CNN4AudioTesting.md)
 - [音频测试场景硬件搭建](HARDWARE4AudioTesting.md)
 - [前端软件设计逻辑](F_SofewareDesign.md)
-- [后端计算软件设计逻辑](B_SofewareDesign.md)
+- [后端计算软件设计逻辑](B_SofewareDesign.md)  
+
     测试思维改善
 - [测试方案设计](testMethodDesign.md)
 # 基础
@@ -236,8 +237,10 @@ print("代码执行时间为：{:.6f}秒".format(elapsed_time))
 THD内容在此不赘述了，网上有很多解决方案，直接算比率就行，非常简单  
 可以转换到频谱计算各频率比值，可以直接滤波计算能量比值  
 但是要注意THD有两种标准  
-IEC标准：$$THD=\frac{harmony}{\sqrt{foundation^2+harmony^2}}     $$   
-IEEE标准：$$THD=\frac{harmony}{foundation}     $$  
+IEC标准：
+$$THD=\frac{harmony}{\sqrt{foundation^2+harmony^2}}     $$   
+IEEE标准：
+$$THD=\frac{harmony}{foundation}     $$  
 同样THD+N 肯定也是能有两种计算方法，可以自行核对和本身流程上的计算方式，在此只讲一个：
 $$THD+N=\frac{V_{total}^2-foundation^2}{V_{total}^2}     $$  
 ```python
