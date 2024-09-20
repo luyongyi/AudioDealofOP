@@ -244,7 +244,20 @@ $$THD=\frac{harmony}{foundation}     $$
 同样THD+N 肯定也是能有两种计算方法，可以自行核对和本身流程上的计算方式，在此只讲一个：
 $$THD+N=\frac{V_{total}^2-foundation^2}{V_{total}^2}     $$  
 ```python
-#代码待定
+#代码确定，但是留了一个坑，没有看懂计算方式修改过来是没办法输出正确的值的，有疑问请提issue，在此不单独解答
+def THDCalculate(SFData,rate,fftsize=1024,foundation=1000,endFFreq=9000):
+    freq,spec=SFSpectrum(SFData,rate,fftsize)
+    Gap=rate/fftsize
+
+    dataList=[]         #取基波和谐波的值，此时应该为db值
+
+    for i in range(foundation,endFreq,foundation):
+        dataList.append(spec[int(i//Gap)])
+
+    Q=0
+    for i in range(1,len(dataList)-1):
+        Q+=10**((dataList[i]-spec[int(foundation//Gap)])/10)  #基波和谐波的比值
+    return Q**0.5#开根号取值
 
 ```
 ### 杂音
