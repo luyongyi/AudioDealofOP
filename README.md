@@ -22,11 +22,12 @@
 
 ### 数字音频标准化:波形大小标准化、dBFS和与Audition对齐
 1.soundfile库会把能读取的wav格式文件，波形数值范围自动标准化为-1—1范围，取名为$sample_{read}$，其中$sample_{read}\not=0$   
-2.部分格式soundfile库无法读取，比如32bit的wav文件或者其他格式，读取可能为对应PCM值，需要自行换算为$\frac{sample}{depth_{intmax}}$，标准化为-1—1的范围   
+2.部分格式soundfile库无法读取，比如32bit的wav文件或者其他格式，读取可能为对应PCM值，需要自行换算为
+$$\frac{sample}{depth_{intmax}},标准化为-1—1的范围$$   
 3.针对波形和FFT对应的dBFS幅度计算方法：  
 $$dBFS=20*\log_{10}(\frac{sample}{ Sample_{max}})，Sample_{max}为音频位深对应最大采样值$$
 所以针对波形换算为dBFS幅度，使用直接映射计算：  
-$$dBFS=20 * \log_{10}{sample_{read}}\space\space其中sample_{read}\neq0$$
+$$dBFS=20 * \log_{10}{sample_{read}}\space\space其中sample_{read}\neq0$$  
 若遇到sample点为0，自行映射到$-\infty$或其他低于该最小幅度值以外，比如16bit PCM文件，最小dBFS为$20*\log_{10}\frac{1}{int16_{MAX}}=-90.3dBFS$ ,聪明的读者会问：我得知的16bit PCM文件动态范围是96dBFS,为什么在你这却少了-6dB,因为那个计算方法是计算-32768~32767整个动态范围，而我说的公式只计算1~32767范围，而整个动态范围计算简洁明了：$20*\log_{10}(uint16_{max})=96dB$
 上述能延申出几个知识点，比如：6dB相差一倍而非3dB，在此不做延申
 
@@ -244,7 +245,7 @@ $$THD=\frac{harmony}{foundation}     $$
 同样THD+N 肯定也是能有两种计算方法，可以自行核对和本身流程上的计算方式，在此只讲一个：
 $$THD+N=\frac{V_{total}^2-foundation^2}{V_{total}^2}     $$  
 ```python
-#代码确定，但是留了一个坑，没有看懂计算方式修改过来是没办法输出正确的值的，有疑问请提issue，在此不单独解答
+#代码确定
 def THDCalculate(SFData,rate,fftsize=1024,foundation=1000,endFFreq=9000):
     freq,spec=SFSpectrum(SFData,rate,fftsize)
     Gap=rate/fftsize
@@ -260,6 +261,8 @@ def THDCalculate(SFData,rate,fftsize=1024,foundation=1000,endFFreq=9000):
     return Q**0.5#开根号取值
 
 ```
+
+
 ### 杂音
 1Khz等音频内识别杂音模式非常简单，因为预期内是特定单一频率和其谐波，所以在频谱上只要使用signal库内iirnotch函数生成尖锐滤波器，再通过滤波期把基波和谐波频点滤除，就剩余环境底噪杂音  
 ```python 
